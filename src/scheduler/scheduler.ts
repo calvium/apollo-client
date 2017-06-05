@@ -58,7 +58,8 @@ export class QueryScheduler {
     const queries = this.queryManager.getApolloState().queries;
 
     // XXX we do this because some legacy tests use a fake queryId. We should rewrite those tests
-    return queries[queryId] && queries[queryId].networkStatus !== NetworkStatus.ready;
+    // OFFLINE-FIX: Change from `!==` to `<` as we should retry after error too, specially on mobile
+    return queries[queryId] && queries[queryId].networkStatus < NetworkStatus.ready;
   }
 
   public fetchQuery<T>(queryId: string, options: WatchQueryOptions, fetchType: FetchType) {
@@ -124,7 +125,8 @@ export class QueryScheduler {
       const queryOptions = this.registeredQueries[queryId];
       const pollingOptions = { ...queryOptions } as WatchQueryOptions;
       pollingOptions.fetchPolicy = 'network-only';
-      this.fetchQuery<T>(queryId, pollingOptions, FetchType.poll);
+      // OFFLINE-FIX: Swallow the error here so there is no unhandled promise error on Console
+      this.fetchQuery<T>(queryId, pollingOptions, FetchType.poll).catch(() => null);
       return true;
     });
 
